@@ -2,6 +2,15 @@ import { Peer } from 'peerjs';
 import { ref, shallowRef } from 'vue';
 import { doLog } from '../utils/logger';
 
+const getIceServers = () =>
+  fetch(
+    'https://cinema-vikun.metered.live/api/v1/turn/credentials?apiKey=e40e67d7e88d7bc13b3fe0e2bdb962bf0cf4',
+  ).then((response) => {
+    if (response.ok) return response.json();
+
+    throw response;
+  });
+
 export const usePeer = () => {
   const peer = shallowRef(null);
   const hostId = ref();
@@ -41,27 +50,31 @@ export const usePeer = () => {
       },
     };
 
-    isOpening.value = true;
-    const _peer = new Peer(peerId.value);
+    return getIceServers()
+      .then((iceServers) => {
+        isOpening.value = true;
+        const _peer = new Peer(peerId.value, { config: { iceServers } });
 
-    _peer.on('open', (id) => {
-      peerId.value = id;
-      isOpening.value = false;
-      isOpened.value = true;
-      onOpen(id);
-    });
+        _peer.on('open', (id) => {
+          peerId.value = id;
+          isOpening.value = false;
+          isOpened.value = true;
+          onOpen(id);
+        });
 
-    _peer.on('call', async (call) => {
-      doLog('info', 'peer.on.call', call.metadata);
-      handleCallType[call.metadata?.type]?.(call);
-    });
+        _peer.on('call', async (call) => {
+          doLog('info', 'peer.on.call', call.metadata);
+          handleCallType[call.metadata?.type]?.(call);
+        });
 
-    _peer.on('error', (error) => {
-      doLog('error', 'peer.on.error', error);
-      onError(error);
-    });
+        _peer.on('error', (error) => {
+          doLog('error', 'peer.on.error', error);
+          onError(error);
+        });
 
-    peer.value = _peer;
+        peer.value = _peer;
+      })
+      .catch(onError);
   };
 
   const close = () => {
