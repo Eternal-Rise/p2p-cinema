@@ -33,6 +33,7 @@ export const usePeer = () => {
         if (!isAllowed) return;
 
         userCall.value = call;
+        call.on('close', close);
         call.on('stream', (incomingStream) => {
           userStream.value = incomingStream;
         });
@@ -44,6 +45,9 @@ export const usePeer = () => {
         screenCall.value = call;
         call.on('stream', (incomingStream) => {
           screenStream.value = incomingStream;
+        });
+        call.on('close', () => {
+          screenStream.value = null;
         });
 
         call.answer();
@@ -78,7 +82,21 @@ export const usePeer = () => {
   };
 
   const close = () => {
-    peer.value?.disconnect();
+    userCall.value?.close();
+
+    // probably, should also call some close actions for streams
+    peer.value?.destroy();
+    peer.value = null;
+    hostId.value = undefined;
+    peerId.value = undefined;
+    friendPeerId.value = undefined;
+    userStream.value = null;
+    screenStream.value = null;
+    userCall.value = null;
+    screenCall.value = null;
+    isConnected.value = false;
+    isOpened.value = false;
+    isOpening.value = false;
   };
 
   const call = ({
@@ -92,9 +110,16 @@ export const usePeer = () => {
       metadata: { ...metadata, type: 'user' },
     });
     userCall.value = call;
+    const connectionTimeout = setTimeout(() => {
+      if (!isConnected.value) {
+        doLog('error', 'timeout connection error');
+        onError(new Error('Connection failed'));
+      }
+    }, 5000);
 
     call.on('close', () => {
       doLog('info', 'call.on.close');
+      close();
       onClose();
     });
     call.on('error', (error) => {
@@ -104,16 +129,10 @@ export const usePeer = () => {
 
     call.on('stream', (incomingStream) => {
       onStream(incomingStream);
+      clearTimeout(connectionTimeout);
       isConnected.value = true;
       userStream.value = incomingStream;
     });
-
-    setTimeout(() => {
-      if (!isConnected.value) {
-        doLog('error', 'timeout connection error');
-        onError(new Error('Connection failed'));
-      }
-    }, 5000);
   };
 
   const startScreenSharing = ({

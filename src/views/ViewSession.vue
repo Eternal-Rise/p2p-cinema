@@ -26,6 +26,11 @@
         <n-button size="large" @click="peer.shareMyScreen">
           Share screen
         </n-button>
+        <n-button size="large" type="error" @click="peer.closePeer">
+          <n-icon>
+            <CallEnd16Filled />
+          </n-icon>
+        </n-button>
       </n-flex>
     </div>
   </div>
@@ -34,6 +39,7 @@
 <script setup>
 import { NButton, NFlex, NIcon } from 'naive-ui';
 import {
+  CallEnd16Filled,
   Mic16Filled,
   MicOff16Filled,
   VideoPerson16Filled,

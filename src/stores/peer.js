@@ -78,6 +78,10 @@ export const usePeerStore = defineStore('peer', () => {
     return promise;
   };
 
+  const closePeer = () => {
+    peer.close();
+  };
+
   const shareMyScreen = async () => {
     try {
       await enableScreen();
@@ -144,6 +148,7 @@ export const usePeerStore = defineStore('peer', () => {
     userStream,
     myVoiceStream,
     openPeer,
+    closePeer,
     shareMyScreen,
     connectToPeer,
     toggleMicrophone,
