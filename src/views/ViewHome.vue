@@ -15,7 +15,7 @@ const peer = usePeerStore();
 const query = useUrlSearchParams('history');
 
 const createPeer = () => {
-  peer.openPeer().then((peerId) => {
+  peer.open().then((peerId) => {
     query.hostId = peerId;
 
     // wait for query update

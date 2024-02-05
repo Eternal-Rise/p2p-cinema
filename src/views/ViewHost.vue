@@ -32,6 +32,6 @@ const linkToShare = computed(() => {
 onMounted(() => {
   peer.hostId = query.hostId;
   peer.peerId = query.hostId;
-  peer.openPeer().catch(() => {});
+  peer.open().catch(() => {});
 });
 </script>

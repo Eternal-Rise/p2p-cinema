@@ -42,7 +42,7 @@ const handleSubmit = async () => {
   try {
     loading.value = true;
     await formRef.value?.validate();
-    await peer.connectToPeer(formValue.value);
+    await peer.connect(formValue.value);
   } catch {
     //
   } finally {

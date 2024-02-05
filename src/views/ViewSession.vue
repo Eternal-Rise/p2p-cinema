@@ -23,10 +23,10 @@
             <MicOff16Filled v-else />
           </n-icon>
         </n-button>
-        <n-button size="large" @click="peer.shareMyScreen">
+        <n-button size="large" @click="peer.startScreenSharing">
           Share screen
         </n-button>
-        <n-button size="large" type="error" @click="peer.closePeer">
+        <n-button size="large" type="error" @click="peer.close">
           <n-icon>
             <CallEnd16Filled />
           </n-icon>
