@@ -1,14 +1,14 @@
 <template>
   <div v-if="peer.isConnected" class="view-session">
     <div class="view-session__media">
-      <app-video :stream="peer.userStream">
+      <app-video :stream="peer.remoteUserStream">
         <template #preview>
           <n-flex align="center" justify="center" class="h-100">
             <n-icon :size="100"> <VideoPerson16Filled /> </n-icon>
           </n-flex>
         </template>
       </app-video>
-      <app-video v-if="peer.screenStream" :stream="peer.screenStream" />
+      <app-video v-if="peer.remoteScreenStream" :stream="peer.remoteScreenStream" />
     </div>
 
     <div class="view-session__controls">

@@ -28,11 +28,11 @@ export const usePeerStore = defineStore('peer', () => {
   const peer = shallowRef(null);
   const hostId = ref();
   const peerId = ref(query.hostId);
-  const friendPeerId = ref();
-  const userStream = shallowRef(null);
-  const screenStream = shallowRef(null);
-  const userCall = shallowRef(null);
-  const screenCall = shallowRef(null);
+  const remotePeerId = ref();
+  const remoteUserStream = shallowRef(null);
+  const remoteScreenStream = shallowRef(null);
+  const remoteUserCall = shallowRef(null);
+  const remoteScreenCall = shallowRef(null);
   const isConnected = ref(false);
   const isOpened = ref(false);
   const isOpening = ref(false);
@@ -57,23 +57,23 @@ export const usePeerStore = defineStore('peer', () => {
     const isConfirmed = await confirmCall(call.metadata);
     if (!isConfirmed) return;
 
-    userCall.value = call;
+    remoteUserCall.value = call;
     call.on('close', close);
-    call.on('stream', (incomingStream) => {
-      userStream.value = incomingStream;
+    call.on('stream', (stream) => {
+      remoteUserStream.value = stream;
     });
     call.answer(myVoiceStream.value);
     isConnected.value = true;
-    friendPeerId.value = call.peer;
+    remotePeerId.value = call.peer;
   };
 
   const handleScreenShareCall = (call) => {
-    screenCall.value = call;
-    call.on('stream', (incomingStream) => {
-      screenStream.value = incomingStream;
+    remoteScreenCall.value = call;
+    call.on('stream', (stream) => {
+      remoteScreenStream.value = stream;
     });
     call.on('close', () => {
-      screenStream.value = null;
+      remoteScreenStream.value = null;
     });
 
     call.answer();
@@ -99,7 +99,10 @@ export const usePeerStore = defineStore('peer', () => {
     getIceServers()
       .then((iceServers) => {
         isOpening.value = true;
-        const _peer = new Peer(peerId.value, { config: { iceServers } });
+        const _peer = new Peer(peerId.value, {
+          debug: 3,
+          config: { iceServers },
+        });
 
         _peer.on('open', (id) => {
           peerId.value = id;
@@ -127,18 +130,18 @@ export const usePeerStore = defineStore('peer', () => {
   };
 
   const close = () => {
-    userCall.value?.close();
+    remoteUserCall.value?.close();
 
     // probably, should also call some close actions for streams
     peer.value?.destroy();
     peer.value = null;
     hostId.value = undefined;
     peerId.value = undefined;
-    friendPeerId.value = undefined;
-    userStream.value = null;
-    screenStream.value = null;
-    userCall.value = null;
-    screenCall.value = null;
+    remotePeerId.value = undefined;
+    remoteUserStream.value = null;
+    remoteScreenStream.value = null;
+    remoteUserCall.value = null;
+    remoteScreenCall.value = null;
     isConnected.value = false;
     isOpened.value = false;
     isOpening.value = false;
@@ -146,14 +149,14 @@ export const usePeerStore = defineStore('peer', () => {
 
   const connect = async (metadata) => {
     const { promise, resolve, reject } = usePromise();
-    friendPeerId.value = query.peerId;
+    remotePeerId.value = query.peerId;
 
     await open();
 
-    const call = peer.value.call(friendPeerId.value, myVoiceStream.value, {
+    const call = peer.value.call(remotePeerId.value, myVoiceStream.value, {
       metadata: { ...metadata, type: 'user' },
     });
-    userCall.value = call;
+    remoteUserCall.value = call;
     const connectionTimeout = setTimeout(() => {
       if (!isConnected.value) {
         doLog('error', 'timeout connection error');
@@ -173,11 +176,11 @@ export const usePeerStore = defineStore('peer', () => {
       reject(error);
     });
 
-    call.on('stream', (incomingStream) => {
+    call.on('stream', (stream) => {
       clearTimeout(connectionTimeout);
       isConnected.value = true;
-      userStream.value = incomingStream;
-      resolve(incomingStream);
+      remoteUserStream.value = stream;
+      resolve(stream);
     });
 
     return promise;
@@ -192,10 +195,10 @@ export const usePeerStore = defineStore('peer', () => {
       return;
     }
 
-    const call = peer.value.call(friendPeerId.value, myScreenStream.value, {
+    const call = peer.value.call(remotePeerId.value, myScreenStream.value, {
       metadata: { type: 'screen' },
     });
-    screenCall.value = call;
+    remoteScreenCall.value = call;
 
     call.on('close', () => {
       doLog('info', 'shareScreen.on.close');
@@ -207,8 +210,8 @@ export const usePeerStore = defineStore('peer', () => {
   };
 
   const stopScreenSharing = () => {
-    screenCall.value?.close();
-    screenCall.value = null;
+    remoteScreenCall.value?.close();
+    remoteScreenCall.value = null;
     disableScreen();
     isScreenEnabled.value = false;
   };
@@ -219,7 +222,7 @@ export const usePeerStore = defineStore('peer', () => {
   const toggleMicrophone = async () => {
     isMicrophoneEnabled.value = !isMicrophoneEnabled.value;
 
-    userCall.value.localStream
+    remoteUserCall.value.localStream
       ?.getAudioTracks()
       .forEach((track) => (track.enabled = isMicrophoneEnabled.value));
   };
@@ -258,13 +261,13 @@ export const usePeerStore = defineStore('peer', () => {
   return {
     hostId,
     peerId,
-    friendPeerId,
+    remotePeerId,
     isConnected,
     isMicrophoneEnabled,
     isScreenEnabled,
     isOpening,
-    screenStream,
-    userStream,
+    remoteScreenStream,
+    remoteUserStream,
     myVoiceStream,
     connect,
     close,
