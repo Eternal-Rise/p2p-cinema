@@ -193,7 +193,7 @@ export const usePeerStore = defineStore('peer', () => {
     }
 
     const call = peer.value.call(friendPeerId.value, myScreenStream.value, {
-      metadata: { ...metadata, type: 'screen' },
+      metadata: { type: 'screen' },
     });
     screenCall.value = call;
 
