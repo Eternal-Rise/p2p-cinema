@@ -50,6 +50,7 @@ export const usePeerStore = defineStore('peer', () => {
     stream: myScreenStream,
     start: enableScreen,
     stop: disableScreen,
+    isSupported: isScreenShareSupported,
   } = useDisplayMedia({
     video: true,
     audio: true,
@@ -295,6 +296,7 @@ export const usePeerStore = defineStore('peer', () => {
     isConnected,
     isMicrophoneEnabled,
     isScreenEnabled,
+    isScreenShareSupported,
     isOpening,
     remoteScreenStream,
     remoteUserStream,

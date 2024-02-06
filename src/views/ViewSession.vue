@@ -8,7 +8,10 @@
           </n-flex>
         </template>
       </app-video>
-      <app-video v-if="peer.remoteScreenStream" :stream="peer.remoteScreenStream" />
+      <app-video
+        v-if="peer.remoteScreenStream"
+        :stream="peer.remoteScreenStream"
+      />
     </div>
 
     <div class="view-session__controls">
@@ -23,28 +26,30 @@
             <MicOff16Filled v-else />
           </n-icon>
         </n-button>
-        <n-tooltip v-if="peer.isScreenEnabled" trigger="hover">
-          <template #trigger>
-            <n-button type="warning" size="large" @click="peer.toggleScreen">
-              <n-icon :size="24">
-                <ShareScreenStop24Regular />
-              </n-icon>
-            </n-button>
-          </template>
+        <template v-if="peer.isScreenShareSupported">
+          <n-tooltip v-if="peer.isScreenEnabled" trigger="hover">
+            <template #trigger>
+              <n-button type="warning" size="large" @click="peer.toggleScreen">
+                <n-icon :size="24">
+                  <ShareScreenStop24Regular />
+                </n-icon>
+              </n-button>
+            </template>
 
-          Stop screen sharing
-        </n-tooltip>
-        <n-tooltip v-else trigger="hover">
-          <template #trigger>
-            <n-button size="large" @click="peer.toggleScreen">
-              <n-icon :size="24">
-                <ShareScreenStart24Regular />
-              </n-icon>
-            </n-button>
-          </template>
+            Stop screen sharing
+          </n-tooltip>
+          <n-tooltip v-else trigger="hover">
+            <template #trigger>
+              <n-button size="large" @click="peer.toggleScreen">
+                <n-icon :size="24">
+                  <ShareScreenStart24Regular />
+                </n-icon>
+              </n-button>
+            </template>
 
-          Share screen
-        </n-tooltip>
+            Share screen
+          </n-tooltip>
+        </template>
 
         <n-button size="large" type="error" @click="peer.close">
           <n-icon>
@@ -82,11 +87,16 @@ const peer = usePeerStore();
 .view-session__media {
   display: grid;
   flex: 1;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
 }
 
 .view-session__controls {
   grid-column: 1 / -1;
   padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .view-session__media {
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  }
 }
 </style>
