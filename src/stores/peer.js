@@ -28,6 +28,8 @@ export const usePeerStore = defineStore('peer', () => {
   const peer = shallowRef(null);
   const hostId = ref();
   const peerId = ref(query.hostId);
+  const userCall = shallowRef(null);
+  const screenCall = shallowRef(null);
   const remotePeerId = ref();
   const remoteUserStream = shallowRef(null);
   const remoteScreenStream = shallowRef(null);
@@ -183,6 +185,7 @@ export const usePeerStore = defineStore('peer', () => {
       resolve(stream);
     });
 
+    userCall.value = call;
     return promise;
   };
 
@@ -198,8 +201,7 @@ export const usePeerStore = defineStore('peer', () => {
     const call = peer.value.call(remotePeerId.value, myScreenStream.value, {
       metadata: { type: 'screen' },
     });
-    remoteScreenCall.value = call;
-
+    screenCall.value = call;
     call.on('close', () => {
       doLog('info', 'shareScreen.on.close');
     });
@@ -210,8 +212,8 @@ export const usePeerStore = defineStore('peer', () => {
   };
 
   const stopScreenSharing = () => {
-    remoteScreenCall.value?.close();
-    remoteScreenCall.value = null;
+    screenCall.value?.close();
+    screenCall.value = null;
     disableScreen();
     isScreenEnabled.value = false;
   };
@@ -230,7 +232,7 @@ export const usePeerStore = defineStore('peer', () => {
   const confirmCall = (metadata) => {
     const { promise, resolve } = usePromise();
     const confirm = notification.create({
-      title: `${metadata.username} want's to connect`,
+      title: `${metadata.username} wants to connect`,
       action: () =>
         h(
           NButton,
@@ -249,7 +251,34 @@ export const usePeerStore = defineStore('peer', () => {
     return promise;
   };
 
-  const onError = (error) =>
+  const onError = (error) => {
+    switch (error?.type) {
+      case 'network':
+        return handleNetworkError(error);
+      default:
+        defaultErrorHandler(error);
+    }
+  };
+
+  const handleNetworkError = (error) => {
+    notification.warning({ content: 'Network error' });
+
+    window.addEventListener(
+      'online',
+      () => {
+        message.info('Trying to reconnect...');
+        peer.value?.reconnect();
+        if (userCall.value) {
+          connect(userCall.value.metadata)
+            .then(() => message.success('Reconnected successfully'))
+            .catch(onError);
+        }
+      },
+      { once: true },
+    );
+  };
+
+  const defaultErrorHandler = (error) =>
     notification.error({ content: error.message ?? error.reason });
 
   watch(myScreenStream, (stream) => {
