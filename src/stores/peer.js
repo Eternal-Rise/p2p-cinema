@@ -55,32 +55,6 @@ export const usePeerStore = defineStore('peer', () => {
     audio: true,
   });
 
-  const handleUserCall = async (call) => {
-    const isConfirmed = await confirmCall(call.metadata);
-    if (!isConfirmed) return;
-
-    remoteUserCall.value = call;
-    call.on('close', close);
-    call.on('stream', (stream) => {
-      remoteUserStream.value = stream;
-    });
-    call.answer(myVoiceStream.value);
-    isConnected.value = true;
-    remotePeerId.value = call.peer;
-  };
-
-  const handleScreenShareCall = (call) => {
-    remoteScreenCall.value = call;
-    call.on('stream', (stream) => {
-      remoteScreenStream.value = stream;
-    });
-    call.on('close', () => {
-      remoteScreenStream.value = null;
-    });
-
-    call.answer();
-  };
-
   const open = async () => {
     if (isOpened.value) return;
 
@@ -132,21 +106,7 @@ export const usePeerStore = defineStore('peer', () => {
   };
 
   const close = () => {
-    remoteUserCall.value?.close();
-
-    // probably, should also call some close actions for streams
-    peer.value?.destroy();
-    peer.value = null;
-    hostId.value = undefined;
-    peerId.value = undefined;
-    remotePeerId.value = undefined;
-    remoteUserStream.value = null;
-    remoteScreenStream.value = null;
-    remoteUserCall.value = null;
-    remoteScreenCall.value = null;
-    isConnected.value = false;
-    isOpened.value = false;
-    isOpening.value = false;
+    userCall.value?.close();
   };
 
   const connect = async (metadata) => {
@@ -168,10 +128,7 @@ export const usePeerStore = defineStore('peer', () => {
       }
     }, 5000);
 
-    call.on('close', () => {
-      doLog('info', 'call.on.close');
-      close();
-    });
+    call.on('close', handleCallClose);
     call.on('error', (error) => {
       doLog('error', 'call.on.error', error);
       onError(error);
@@ -258,6 +215,50 @@ export const usePeerStore = defineStore('peer', () => {
       default:
         defaultErrorHandler(error);
     }
+  };
+
+  const handleUserCall = async (call) => {
+    const isConfirmed = await confirmCall(call.metadata);
+    if (!isConfirmed) return;
+
+    remoteUserCall.value = call;
+    call.on('close', handleCallClose);
+    call.on('stream', (stream) => {
+      remoteUserStream.value = stream;
+    });
+    call.answer(myVoiceStream.value);
+    isConnected.value = true;
+    remotePeerId.value = call.peer;
+  };
+
+  const handleScreenShareCall = (call) => {
+    remoteScreenCall.value = call;
+    call.on('stream', (stream) => {
+      remoteScreenStream.value = stream;
+    });
+    call.on('close', () => {
+      remoteScreenStream.value = null;
+    });
+
+    call.answer();
+  };
+
+  const handleCallClose = () => {
+    // probably, should also call some close actions for streams
+    peer.value?.destroy();
+    peer.value = null;
+    hostId.value = undefined;
+    peerId.value = undefined;
+    remotePeerId.value = undefined;
+    remoteUserStream.value = null;
+    remoteScreenStream.value = null;
+    remoteUserCall.value = null;
+    remoteScreenCall.value = null;
+    isConnected.value = false;
+    isOpened.value = false;
+    isOpening.value = false;
+
+    message.info('Call ended');
   };
 
   const handleNetworkError = (error) => {
