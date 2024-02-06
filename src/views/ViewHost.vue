@@ -15,7 +15,6 @@ import { useClipboard, useUrlSearchParams } from '@vueuse/core';
 import { usePeerStore } from '../stores/peer';
 
 const peer = usePeerStore();
-const query = useUrlSearchParams('history');
 const message = useMessage();
 const { copy } = useClipboard();
 
@@ -30,8 +29,8 @@ const linkToShare = computed(() => {
 });
 
 onMounted(() => {
-  peer.hostId = query.hostId;
-  peer.peerId = query.hostId;
+  peer.hostId = peer.query.hostId;
+  peer.peerId = peer.query.hostId;
   peer.open().catch(() => {});
 });
 </script>

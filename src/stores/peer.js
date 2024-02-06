@@ -1,10 +1,11 @@
-import { ref, shallowRef, h, watch, computed } from 'vue';
+import { ref, shallowRef, h, watch } from 'vue';
 import { Peer } from 'peerjs';
 import { NButton, useMessage, useNotification } from 'naive-ui';
 import {
   useUrlSearchParams,
   useUserMedia,
   useDisplayMedia,
+  useThrottleFn,
 } from '@vueuse/core';
 import { defineStore } from 'pinia';
 
@@ -23,6 +24,9 @@ const getIceServers = () =>
 export const usePeerStore = defineStore('peer', () => {
   const message = useMessage();
   const notification = useNotification();
+
+  // query is not reactive between different instances, so need this as singleton
+  // https://github.com/vueuse/vueuse/issues/3759
   const query = useUrlSearchParams();
 
   const peer = shallowRef(null);
@@ -41,7 +45,11 @@ export const usePeerStore = defineStore('peer', () => {
   const isMicrophoneEnabled = ref(false);
   const isScreenEnabled = ref(false);
 
-  const { stream: myVoiceStream, start: enableMicrophone } = useUserMedia({
+  const {
+    stream: myVoiceStream,
+    start: enableMicrophone,
+    stop: disabledMicrophone,
+  } = useUserMedia({
     constraints: {
       audio: true,
     },
@@ -59,14 +67,6 @@ export const usePeerStore = defineStore('peer', () => {
   const open = async () => {
     if (isOpened.value) return;
 
-    try {
-      await enableMicrophone();
-      isMicrophoneEnabled.value = true;
-    } catch (error) {
-      message.error(error.message);
-      return;
-    }
-
     const handleCallType = {
       user: handleUserCall,
       screen: handleScreenShareCall,
@@ -77,7 +77,6 @@ export const usePeerStore = defineStore('peer', () => {
       .then((iceServers) => {
         isOpening.value = true;
         const _peer = new Peer(peerId.value, {
-          debug: 3,
           config: { iceServers },
         });
 
@@ -106,14 +105,32 @@ export const usePeerStore = defineStore('peer', () => {
     return promise;
   };
 
-  const close = () => {
-    userCall.value?.close();
-  };
+  const close = useThrottleFn(() => {
+    if (isConnected.value) {
+      message.info('Call ended');
+    }
+
+    peer.value?.destroy();
+    peer.value = null;
+    hostId.value = undefined;
+    peerId.value = undefined;
+    remotePeerId.value = undefined;
+    remoteUserStream.value = null;
+    remoteScreenStream.value = null;
+    remoteUserCall.value = null;
+    remoteScreenCall.value = null;
+    isConnected.value = false;
+    isOpened.value = false;
+    isOpening.value = false;
+    stopScreenSharing();
+    stopMicrophone();
+  }, 500);
 
   const connect = async (metadata) => {
     const { promise, resolve, reject } = usePromise();
     remotePeerId.value = query.peerId;
 
+    await tryEnableMicrophone();
     await open();
 
     const call = peer.value.call(remotePeerId.value, myVoiceStream.value, {
@@ -129,7 +146,7 @@ export const usePeerStore = defineStore('peer', () => {
       }
     }, 5000);
 
-    call.on('close', handleCallClose);
+    call.on('close', close);
     call.on('error', (error) => {
       doLog('error', 'call.on.error', error);
       onError(error);
@@ -187,6 +204,22 @@ export const usePeerStore = defineStore('peer', () => {
       .forEach((track) => (track.enabled = isMicrophoneEnabled.value));
   };
 
+  const stopMicrophone = () => {
+    userCall.value?.close();
+    userCall.value = null;
+    disabledMicrophone();
+    isMicrophoneEnabled.value = false;
+  };
+
+  const tryEnableMicrophone = async () => {
+    try {
+      await enableMicrophone();
+      isMicrophoneEnabled.value = true;
+    } catch (error) {
+      message.error(error.message);
+    }
+  };
+
   const confirmCall = (metadata) => {
     const { promise, resolve } = usePromise();
     const confirm = notification.create({
@@ -219,11 +252,12 @@ export const usePeerStore = defineStore('peer', () => {
   };
 
   const handleUserCall = async (call) => {
+    await tryEnableMicrophone();
     const isConfirmed = await confirmCall(call.metadata);
     if (!isConfirmed) return;
 
     remoteUserCall.value = call;
-    call.on('close', handleCallClose);
+    call.on('close', close);
     call.on('stream', (stream) => {
       remoteUserStream.value = stream;
     });
@@ -242,24 +276,6 @@ export const usePeerStore = defineStore('peer', () => {
     });
 
     call.answer();
-  };
-
-  const handleCallClose = () => {
-    // probably, should also call some close actions for streams
-    peer.value?.destroy();
-    peer.value = null;
-    hostId.value = undefined;
-    peerId.value = undefined;
-    remotePeerId.value = undefined;
-    remoteUserStream.value = null;
-    remoteScreenStream.value = null;
-    remoteUserCall.value = null;
-    remoteScreenCall.value = null;
-    isConnected.value = false;
-    isOpened.value = false;
-    isOpening.value = false;
-
-    message.info('Call ended');
   };
 
   const handleNetworkError = (error) => {
@@ -301,6 +317,7 @@ export const usePeerStore = defineStore('peer', () => {
     remoteScreenStream,
     remoteUserStream,
     myVoiceStream,
+    query,
     connect,
     close,
     open,

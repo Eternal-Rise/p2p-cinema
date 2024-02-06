@@ -12,11 +12,10 @@ import FormCreatePeer from '../components/FormCreatePeer.vue';
 import { usePeerStore } from '../stores/peer';
 
 const peer = usePeerStore();
-const query = useUrlSearchParams('history');
 
 const createPeer = () => {
   peer.open().then((peerId) => {
-    query.hostId = peerId;
+    peer.query.hostId = peerId;
 
     // wait for query update
     nextTick(() => {
@@ -26,6 +25,6 @@ const createPeer = () => {
 };
 
 onMounted(() => {
-  peer.hostId = query.hostId;
+  peer.hostId = peer.query.hostId;
 });
 </script>
