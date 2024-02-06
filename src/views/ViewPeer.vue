@@ -1,11 +1,12 @@
-import { NFlex } from 'naive-ui';
 <template>
   <n-flex align="center" justify="center" class="h-100">
     <n-form ref="formRef" :model="formValue" :rules="rules" size="large">
       <n-form-item label="Name" path="username">
         <n-input
           v-model:value="formValue.username"
+          :loading="loading"
           placeholder="Input your name"
+          @keydown.enter="handleSubmit"
         />
       </n-form-item>
       <n-button
@@ -39,6 +40,8 @@ const rules = {
 };
 
 const handleSubmit = async () => {
+  if (loading.value) return;
+
   try {
     loading.value = true;
     await formRef.value?.validate();
