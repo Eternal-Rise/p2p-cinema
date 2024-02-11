@@ -60,7 +60,10 @@ export const usePeerStore = defineStore('peer', () => {
     stop: disableScreen,
     isSupported: isScreenShareSupported,
   } = useDisplayMedia({
-    video: true,
+    video: {
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+    },
     audio: true,
   });
 
