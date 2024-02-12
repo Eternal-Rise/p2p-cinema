@@ -1,5 +1,5 @@
 <template>
-  <n-layout-header v-if="!isSessionView">
+  <n-layout-header v-if="!isSessionView" position="absolute">
     <n-menu
       :value="activeKey"
       :options="menuOptions"

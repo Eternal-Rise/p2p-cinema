@@ -44,6 +44,7 @@ export const usePeerStore = defineStore('peer', () => {
   const isOpening = ref(false);
   const isMicrophoneEnabled = ref(false);
   const isScreenEnabled = ref(false);
+  const screenShareResolution = ref('1080p');
 
   const {
     stream: myVoiceStream,
@@ -60,6 +61,7 @@ export const usePeerStore = defineStore('peer', () => {
     stop: disableScreen,
     isSupported: isScreenShareSupported,
   } = useDisplayMedia({
+    // constrains are not reactive by now
     video: {
       width: { ideal: 1920 },
       height: { ideal: 1080 },
@@ -176,6 +178,7 @@ export const usePeerStore = defineStore('peer', () => {
       return;
     }
 
+    await tryApplyScreenStreamConstraints();
     const call = peer.value.call(remotePeerId.value, myScreenStream.value, {
       metadata: { type: 'screen' },
     });
@@ -302,6 +305,55 @@ export const usePeerStore = defineStore('peer', () => {
   const defaultErrorHandler = (error) =>
     notification.error({ content: error.message ?? error.reason });
 
+  const setScreenShareResolution = (resolution) => {
+    screenShareResolution.value = resolution;
+    tryApplyScreenStreamConstraints();
+  };
+
+  const tryApplyScreenStreamConstraints = () => {
+    const constraintsVariants = {
+      '1440p60': {
+        width: { ideal: 2560 },
+        height: { ideal: 1440 },
+        frameRate: { ideal: 60 },
+      },
+      '1080p60': {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 60 },
+      },
+      '720p60': {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 60 },
+      },
+      '1440p': {
+        width: { ideal: 2560 },
+        height: { ideal: 1440 },
+        frameRate: { ideal: 30 },
+      },
+      '1080p': {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 },
+      },
+      '720p': {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 },
+      },
+    };
+
+    const constraints =
+      constraintsVariants[screenShareResolution.value] ??
+      constraintsVariants['1080'];
+    const track = myScreenStream.value?.getVideoTracks()[0];
+
+    return track?.applyConstraints(constraints).catch((error) => {
+      doLog('info', 'Apply constraints failed', error);
+    });
+  };
+
   watch(myScreenStream, (stream) => {
     if (stream) {
       stream.oninactive = () => stopScreenSharing();
@@ -310,20 +362,22 @@ export const usePeerStore = defineStore('peer', () => {
 
   return {
     hostId,
-    peerId,
-    remotePeerId,
     isConnected,
     isMicrophoneEnabled,
+    isOpening,
     isScreenEnabled,
     isScreenShareSupported,
-    isOpening,
+    myVoiceStream,
+    peerId,
+    query,
+    remotePeerId,
     remoteScreenStream,
     remoteUserStream,
-    myVoiceStream,
-    query,
+    screenShareResolution,
     connect,
     close,
     open,
+    setScreenShareResolution,
     toggleScreen,
     toggleMicrophone,
   };

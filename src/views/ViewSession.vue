@@ -21,7 +21,7 @@
           size="large"
           @click="peer.toggleMicrophone"
         >
-          <n-icon>
+          <n-icon :size="24">
             <Mic16Filled v-if="peer.isMicrophoneEnabled" />
             <MicOff16Filled v-else />
           </n-icon>
@@ -51,8 +51,10 @@
           </n-tooltip>
         </template>
 
+        <select-screen-share-resolution />
+
         <n-button size="large" type="error" @click="peer.close">
-          <n-icon>
+          <n-icon :size="24">
             <CallEnd16Filled />
           </n-icon>
         </n-button>
@@ -67,11 +69,12 @@ import {
   CallEnd16Filled,
   Mic16Filled,
   MicOff16Filled,
-  VideoPerson16Filled,
   ShareScreenStart24Regular,
   ShareScreenStop24Regular,
+  VideoPerson16Filled,
 } from '@vicons/fluent';
 import AppVideo from '../components/AppVideo.vue';
+import SelectScreenShareResolution from '../components/peer/SelectScreenShareResolution.vue';
 import { usePeerStore } from '../stores/peer';
 
 const peer = usePeerStore();
