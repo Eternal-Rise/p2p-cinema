@@ -1,14 +1,9 @@
 <template>
-  <div
-    ref="root"
-    class="app-video"
-    :class="{ '_show-controls': controlsVisibility }"
-    @mousemove="showControls"
-  >
+  <div class="peer-video">
     <n-card class="h-100" content-style="padding: 0;">
       <slot v-if="!hasVideoTrack" name="preview" />
       <video v-show="hasVideoTrack" ref="video" />
-      <div class="app-video__controls">
+      <div class="peer-video__controls">
         <n-button quaternary circle @click="toggleVolume">
           <template #icon>
             <n-icon>
@@ -18,13 +13,15 @@
           </template>
         </n-button>
         <n-slider
-          :value="volume"
-          :step="1"
-          :tooltip="false"
+          :max="1"
+          :min="0"
+          :step="0.01"
           :style="{ width: '100px' }"
+          :tooltip="false"
+          :value="volume"
           :on-update:value="setVolume"
         />
-        <n-button quaternary circle @click="toggleFullScreen">
+        <n-button quaternary circle @click="emit('fullscreen')">
           <template #icon>
             <n-icon>
               <FullScreenMaximize16Regular />
@@ -37,7 +34,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch, onMounted } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { NButton, NCard, NIcon, NSlider } from 'naive-ui';
 import {
   FullScreenMaximize16Regular,
@@ -49,22 +46,16 @@ const props = defineProps({
   stream: { type: Object, default: null },
 });
 
-const root = ref();
+const emit = defineEmits(['fullscreen']);
+
 const video = ref();
-const volume = ref(100);
-const lastVolume = ref(100);
-const controlsVisibility = ref(true);
-const controlsVisibilityTimeout = ref();
+const volume = ref(1);
+const lastVolume = ref(1);
 
 const hasVideoTrack = computed(() => {
   const tracks = props.stream?.getVideoTracks?.() || [];
   return tracks.length > 0;
 });
-
-const toggleFullScreen = () =>
-  document.fullscreenElement
-    ? document.exitFullscreen()
-    : root.value.requestFullscreen();
 
 const playStream = (stream) => {
   nextTick(() => {
@@ -80,8 +71,8 @@ const setVolume = (val) => {
   const el = video.value;
   if (el) {
     volume.value = val;
-    lastVolume.value = Math.max(val, lastVolume.value);
-    el.volume = val === 0 ? 0 : val / 100;
+    lastVolume.value = val;
+    el.volume = val;
   }
 };
 
@@ -89,46 +80,44 @@ const toggleVolume = () => {
   setVolume(volume.value === 0 ? lastVolume.value : 0);
 };
 
-const showControls = () => {
-  controlsVisibility.value = true;
-  clearTimeout(controlsVisibilityTimeout.value);
-  controlsVisibilityTimeout.value = setTimeout(() => {
-    controlsVisibility.value = false;
-  }, 3000);
-};
-
 watch(() => props.stream, playStream, {
   immediate: true,
 });
 
 watch(volume, setVolume);
-
-onMounted(showControls);
 </script>
 
 <style>
-.app-video {
+.peer-video {
   position: relative;
 }
 
-.app-video video {
+.peer-video video {
   width: 100%;
   height: 100%;
+  object-fit: contain;
 }
 
-.app-video._show-controls .app-video__controls,
-.app-video__controls:active,
-.app-video__controls:focus-within {
+.show-controls .peer-video__controls,
+.peer-video__controls:active,
+.peer-video__controls:focus-within {
   display: flex;
 }
 
-.app-video__controls {
+.peer-video__controls {
   align-items: last baseline;
   box-shadow: inset 0 -50px 50px -50px rgba(207, 62, 226, 0.5);
   display: none;
   gap: 0.5rem;
   inset: 0;
   justify-content: center;
+  padding: 1rem;
   position: absolute;
+}
+
+@media (display-mode: fullscreen) {
+  .peer-video__controls {
+    justify-content: flex-end;
+  }
 }
 </style>
